@@ -1,5 +1,6 @@
 package com.heloucomunicacao.ecommerce.controller;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
 import com.heloucomunicacao.ecommerce.model.Produto;
 import com.heloucomunicacao.ecommerce.service.ProdutoService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,53 +10,57 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RestController //Informando o Java que essa classe é uma controller
-@RequestMapping("/produtos") //Padronizando rota base como "/produtos"
+@RestController
+@RequestMapping("/produtos")
+@CrossOrigin(origins = "*", allowedHeaders = "*") //Permite a requisição de quaisquer origens (somente antes do deploy; para implementação do front end)
 public class ProdutoController {
 
     @Autowired
-    private ProdutoService produtoService; //Realizando injeção de dependência; injetando a interface service na controller para...
+    private ProdutoService produtoService; //Instanciando a service (regra de negócio para adição ou criação de um novo produto)
 
-    @PostMapping //Metodo post para criar um novo produto
-    public ResponseEntity<Produto> criarProduto(@RequestBody Produto produto) { //Utilizando ResponseEntity<> para lidar com respostas HTTP e @RequestBody para receber JSON do corpo das requisições
-        Produto novoProduto = produtoService.salvarProduto(produto); //Quando chamado, o Post irá criar uma nova instância da Model Produto, executando o método salvarProduto da produtoService
-        return new ResponseEntity<>(novoProduto, HttpStatus.CREATED); //Retorna se o novo produto foi criado
+    @PostMapping //Método para a criação de um produto
+    public ResponseEntity<Produto> criarProduto(@RequestBody Produto produto) {
+        Produto novoProduto = produtoService.salvarProduto(produto);
+        return new ResponseEntity<>(novoProduto, HttpStatus.CREATED);
     }
 
-    @GetMapping //Método get para listar os produtos
+    @GetMapping //Método para retornar uma lista produtos
     public ResponseEntity<List<Produto>> listarProdutos() {
         List<Produto> produtos = produtoService.listarTodos();
         return new ResponseEntity<>(produtos, HttpStatus.OK);
     }
 
-    @GetMapping("/{id}") //Método get para retornar um produto específico com base no seu Id
-    public ResponseEntity<Produto> buscarPorId(@PathVariable Long id) { //@áthVariable para receber o Id da URL
+    @GetMapping("/{id}") //Método para auxiliar a abertura da tela de edição de um produto específico
+    public ResponseEntity<Produto> buscarPorId(@PathVariable Long id) {
         return produtoService.buscarPorId(id)
                 .map(produto -> new ResponseEntity<>(produto, HttpStatus.OK))
                 .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    @PutMapping("/{id}") //Método put para atualizar o produto com base no seu Id
-    public ResponseEntity<Produto> atualizarProduto(@PathVariable Long id, @RequestBody Produto produto) { //@PathVariable para receber o Id da URL e @RequestBody para receber os campos atualizados do Body do JSON
+    @PutMapping("/{id}") //Método para setar a atualização dos dados de um produto
+    public ResponseEntity<Produto> atualizarProduto(@PathVariable Long id, @RequestBody Produto produto) {
         return produtoService.buscarPorId(id)
-                .map(produtoExistente -> { //Inicio da estrutura optional para manipulação dos dados do produto
+                .map(produtoExistente -> {
                     produtoExistente.setNome(produto.getNome());
                     produtoExistente.setDescricao(produto.getDescricao());
                     produtoExistente.setPreco(produto.getPreco());
-                    produtoExistente.setLinkDownload(produto.getLinkDownload());
-                    Produto produtoAtualizado = produtoService.salvarProduto(produtoExistente);
+                    produtoExistente.setLinkDownload(produto.getLinkDownload()); //Campo para link de download do produto
+                    produtoExistente.setImagemUrl(produto.getImagemUrl()); //Adicionando campo para imagem do produto
+                    produtoExistente.setCategoria(produto.getCategoria()); //Adicionando campo para categoria
+                    Produto produtoAtualizado = produtoService.salvarProduto(produtoExistente); //Salva o produto com as novas informações no banco se ele existir
                     return new ResponseEntity<>(produtoAtualizado, HttpStatus.OK);
                 })
                 .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletarProduto(@PathVariable Long id) {
-        if (produtoService.buscarPorId(id).isPresent()) {
-            produtoService.deletarProduto(id);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else {
+    @PutMapping("/{id}/status") //Adicionando método para atualizar o o status de um produto (soft delete) ao invés de deleta-lo
+    public ResponseEntity<Produto> inativarProduto(@PathVariable Long id, @RequestParam String novoStatus) {
+        Produto produtoAtualizado = produtoService.atualizarStatus(id, novoStatus);
+
+        if (produtoAtualizado == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+
+        return new ResponseEntity<>(produtoAtualizado, HttpStatus.OK);
     }
 }

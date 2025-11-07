@@ -1,9 +1,6 @@
 package com.heloucomunicacao.ecommerce.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
 
 @Entity
@@ -16,6 +13,7 @@ public class Produto {
     private String nome;
     private String descricao;
     private double preco;
-    private String linkDownload;
-
+    private String linkDownload; //Adicionando atributo para link de download do produto
+    private String status = "Ativo"; //Adicionando atributo de status para produto
+    private String imagemUrl; //Adicionando atributo de imagem para o produto
 }
